@@ -7,7 +7,7 @@ import { Inset } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { IconTile } from '@/components/ui/IconTile';
 import type { AssistantContext, RuleSuggestion } from '@/data/types';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useTheme } from '@/theme/useTheme';
 import { radius, spacing } from '@/theme/tokens';
 
 export function UserBubble({ text, time }: { text: string; time: string }) {

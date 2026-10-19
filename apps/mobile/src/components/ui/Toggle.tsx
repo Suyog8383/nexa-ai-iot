@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { useTheme } from '@/theme/ThemeProvider';
+import { useTheme } from '@/theme/useTheme';
 
 const WIDTH = 48;
 const HEIGHT = 28;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { defaultRuleName, describeRuleShort, describeRuleSummary, formatThreshold, stepThreshold } from '../rules';
+import { defaultRuleName, describeRuleShort, describeRuleSummary, formatThreshold, parseAlertRule, stepThreshold } from '../rules';
 
 const notify = { push: true, inApp: true, sound: false };
 const join = (parts: { text: string }[]) => parts.map((p) => p.text).join('');
@@ -51,5 +51,34 @@ describe('stepThreshold', () => {
     expect(stepThreshold('temperature', 40, 1)).toBe(40);
     expect(stepThreshold('humidity', 10, -1)).toBe(10);
     expect(stepThreshold('humidity', 60, 1)).toBe(61);
+  });
+});
+
+describe('parseAlertRule', () => {
+  const valid = { id: 'r1', name: 'Low Temperature Alert', deviceId: 'd1', metric: 'temperature', condition: 'below', threshold: 19.5, duration: '5m', notify, enabled: true };
+
+  it('accepts a well-formed rule, with or without an origin', () => {
+    expect(parseAlertRule(valid)).toEqual(valid);
+    expect(parseAlertRule({ ...valid, origin: 'm2' })).toEqual({ ...valid, origin: 'm2' });
+  });
+
+  it('strips unknown fields', () => {
+    expect(parseAlertRule({ ...valid, extra: 1, notify: { ...notify, vibrate: true } })).toEqual(valid);
+  });
+
+  it.each([
+    ['a non-object', 'rule'],
+    ['an empty id', { ...valid, id: ' ' }],
+    ['an unknown metric', { ...valid, metric: 'pressure' }],
+    ['an unknown condition', { ...valid, condition: 'equals' }],
+    ['an unknown duration', { ...valid, duration: '1h' }],
+    ['a non-numeric threshold', { ...valid, threshold: '19.5' }],
+    ['a non-finite threshold', { ...valid, threshold: Infinity }],
+    ['a threshold outside the stepper range', { ...valid, threshold: 41 }],
+    ['incomplete notify prefs', { ...valid, notify: { push: true } }],
+    ['a non-boolean enabled', { ...valid, enabled: 'yes' }],
+    ['a non-string origin', { ...valid, origin: 42 }],
+  ])('rejects %s', (_label, value) => {
+    expect(parseAlertRule(value)).toBeNull();
   });
 });

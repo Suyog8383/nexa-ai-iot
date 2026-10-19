@@ -4,7 +4,7 @@ import { Placeholder } from '@/components/layout/Placeholder';
 import { AppText } from '@/components/ui/AppText';
 import { Card } from '@/components/ui/Card';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { useTheme, type ThemePreference } from '@/theme/ThemeProvider';
+import { useTheme, type ThemePreference } from '@/theme/useTheme';
 import { spacing } from '@/theme/tokens';
 
 export default function ProfileScreen() {

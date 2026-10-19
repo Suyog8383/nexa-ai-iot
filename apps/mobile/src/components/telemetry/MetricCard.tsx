@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { IconTile } from '@/components/ui/IconTile';
 import type { IconName } from '@/components/ui/Icon';
 import type { StatusKind } from '@/data/types';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useTheme } from '@/theme/useTheme';
 import { spacing } from '@/theme/tokens';
 
 type Props = {

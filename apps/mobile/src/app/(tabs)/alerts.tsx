@@ -11,15 +11,16 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { IconTile } from '@/components/ui/IconTile';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { useAlerts } from '@/data/AlertsStore';
 import { alertHistory, devices } from '@/data/mock';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useAlertsStore } from '@/stores/alertsStore';
+import { useTheme } from '@/theme/useTheme';
 import { spacing } from '@/theme/tokens';
 
 export default function AlertsScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { rules, setRuleEnabled } = useAlerts();
+  const rules = useAlertsStore((s) => s.rules);
+  const setRuleEnabled = useAlertsStore((s) => s.setRuleEnabled);
   const enabled = rules.filter((r) => r.enabled).length;
 
   return (

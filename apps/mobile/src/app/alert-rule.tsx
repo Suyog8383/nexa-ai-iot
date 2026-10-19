@@ -12,11 +12,11 @@ import { Icon, type IconName } from '@/components/ui/Icon';
 import { IconTile } from '@/components/ui/IconTile';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Toggle } from '@/components/ui/Toggle';
-import { useAlerts } from '@/data/AlertsStore';
 import { livingRoomMonitor as device } from '@/data/mock';
 import { defaultRuleName, describeRuleSummary, formatThreshold, stepThreshold } from '@/data/rules';
 import type { Condition, Metric, NotifyPrefs, TriggerDuration } from '@/data/types';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useAlertsStore } from '@/stores/alertsStore';
+import { useTheme } from '@/theme/useTheme';
 import { radius, spacing, typography } from '@/theme/tokens';
 
 const DEFAULT_THRESHOLD: Record<Metric, number> = { temperature: 19.5, humidity: 60 };
@@ -24,7 +24,7 @@ const DEFAULT_THRESHOLD: Record<Metric, number> = { temperature: 19.5, humidity:
 export default function CreateAlertRuleScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { addRule } = useAlerts();
+  const addRule = useAlertsStore((s) => s.addRule);
   const params = useLocalSearchParams<{ from?: string; origin?: string; metric?: Metric; condition?: Condition; threshold?: string }>();
 
   const [metric, setMetric] = useState<Metric>(params.metric ?? 'temperature');

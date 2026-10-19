@@ -4,7 +4,7 @@ import { StyleSheet } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import { Card } from '@/components/ui/Card';
 import { Icon, type IconName } from '@/components/ui/Icon';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useTheme } from '@/theme/useTheme';
 import { spacing } from '@/theme/tokens';
 
 import { Screen } from './Screen';

@@ -4,7 +4,7 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
 import { Icon, type IconName } from '@/components/ui/Icon';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useTheme } from '@/theme/useTheme';
 import { layout, spacing } from '@/theme/tokens';
 
 const TABS: Record<string, { label: string; icon: IconName }> = {

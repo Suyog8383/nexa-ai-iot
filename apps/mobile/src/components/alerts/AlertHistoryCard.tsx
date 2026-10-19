@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import type { AlertHistoryItem } from '@/data/types';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useTheme } from '@/theme/useTheme';
 import { spacing } from '@/theme/tokens';
 
 export function AlertHistoryCard({ item }: { item: AlertHistoryItem }) {

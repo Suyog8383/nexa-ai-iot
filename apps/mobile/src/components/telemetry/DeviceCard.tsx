@@ -8,7 +8,7 @@ import { Card, Inset } from '@/components/ui/Card';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { IconTile } from '@/components/ui/IconTile';
 import type { Device } from '@/data/types';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useTheme } from '@/theme/useTheme';
 import { spacing } from '@/theme/tokens';
 
 import { statusBadge } from './status';

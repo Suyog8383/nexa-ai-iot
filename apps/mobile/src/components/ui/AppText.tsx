@@ -1,6 +1,6 @@
 import { Text, type TextProps } from 'react-native';
 
-import { useTheme } from '@/theme/ThemeProvider';
+import { useTheme } from '@/theme/useTheme';
 import { typography, type ThemeColors, type TypographyVariant } from '@/theme/tokens';
 
 type ColorToken = { [K in keyof ThemeColors]: ThemeColors[K] extends string ? K : never }[keyof ThemeColors];

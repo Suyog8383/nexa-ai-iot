@@ -12,7 +12,7 @@ import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { devices } from '@/data/mock';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useTheme } from '@/theme/useTheme';
 import { radius, spacing } from '@/theme/tokens';
 
 export default function DevicesScreen() {

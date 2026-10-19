@@ -7,8 +7,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { AlertsProvider } from '@/data/AlertsStore';
-import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
+import { useStoresHydrated } from '@/stores/hydration';
+import { useTheme } from '@/theme/useTheme';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -25,19 +25,19 @@ export default function RootLayout() {
     MaterialSymbolsFilled: require('@/assets/fonts/MaterialSymbolsFilled.ttf'),
   });
 
-  useEffect(() => {
-    if (loaded || error) SplashScreen.hideAsync();
-  }, [loaded, error]);
+  // Keep the splash up until saved theme and alert rules are loaded, so nothing renders with defaults first.
+  const hydrated = useStoresHydrated();
+  const ready = (loaded || !!error) && hydrated;
 
-  if (!loaded && !error) return null;
+  useEffect(() => {
+    if (ready) SplashScreen.hideAsync();
+  }, [ready]);
+
+  if (!ready) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider>
-        <AlertsProvider>
-          <RootStack />
-        </AlertsProvider>
-      </ThemeProvider>
+      <RootStack />
     </GestureHandlerRootView>
   );
 }

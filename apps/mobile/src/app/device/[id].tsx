@@ -17,7 +17,7 @@ import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Toggle } from '@/components/ui/Toggle';
 import { TrendChart } from '@/components/ui/TrendChart';
 import { deviceActivity, devices, todayTrend } from '@/data/mock';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useTheme } from '@/theme/useTheme';
 import { radius, spacing } from '@/theme/tokens';
 
 export default function DeviceDetailsScreen() {
