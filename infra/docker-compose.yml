@@ -1,0 +1,41 @@
+# Local databases for Nexa API development. Not for deployment.
+#   docker compose -f infra/docker-compose.yml --env-file infra/.env up -d
+name: nexa
+
+services:
+  # Development database: data survives restarts (named volume).
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: nexa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infra/.env}
+      POSTGRES_DB: nexa
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - nexa-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexa -d nexa"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Test database: separate server and port, data in memory only. Tests wipe it freely.
+  postgres-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: nexa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infra/.env}
+      POSTGRES_DB: nexa_test
+    ports:
+      - "127.0.0.1:5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexa -d nexa_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  nexa-pg-data:
