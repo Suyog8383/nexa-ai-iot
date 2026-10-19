@@ -35,7 +35,7 @@ Shared request/response types live in `packages/contracts` and are used by both 
 | Platform priority | Android first; keep iOS compatible |
 | Monorepo tooling | npm workspaces, one root lockfile |
 | API | Node.js + TypeScript + Fastify 5, modular monolith (`apps/api`) |
-| Database | PostgreSQL 16 via Docker Compose (`infra/`) locally; Drizzle ORM + committed SQL migrations |
+| Database | PostgreSQL 16 via Docker Compose (`infra/`) locally: dev on port 5434, in-memory test DB on 5433. Drizzle ORM + committed SQL migrations |
 | API contract | zod schemas in `@nexa/contracts`, shared by the app and the API |
 | Device → API transport | HTTPS `POST /v1/telemetry` with a per-device bearer token; MQTT revisited if device count, frequency or server→device commands require it |
 | Reporting interval | 30 s default (10–3600 s allowed) |
@@ -43,7 +43,7 @@ Shared request/response types live in `packages/contracts` and are used by both 
 
 ## Monorepo
 
-npm workspaces (`apps/mobile`, `packages/contracts`; `apps/api` joins when it's created), installed once from the root. Expo's Metro config detects the workspace automatically (SDK 52+), so there is no custom `metro.config.js`. Keep exactly one version of `react` and `react-native` in the repo. The firmware is built with its own toolchain and stays outside the npm workspaces.
+npm workspaces (`apps/mobile`, `apps/api`, `packages/contracts`), installed once from the root. Expo's Metro config detects the workspace automatically (SDK 52+), so there is no custom `metro.config.js`. Keep exactly one version of `react` and `react-native` in the repo. The firmware is built with its own toolchain and stays outside the npm workspaces.
 
 ## Open questions
 
