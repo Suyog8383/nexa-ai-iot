@@ -1,0 +1,15 @@
+# Expo
+.expo/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+
+# Metro
+.metro-health-check*
+
+# generated native folders (Continuous Native Generation)
+/ios
+/android
