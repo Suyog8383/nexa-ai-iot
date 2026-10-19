@@ -1,54 +1,37 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+# Repo-wide rules. App-specific rules live next to each app (e.g. apps/mobile/.gitignore).
 
 # dependencies
 node_modules/
 
-# Expo
-.expo/
+# build output
 dist/
-web-build/
-expo-env.d.ts
+coverage/
+*.tsbuildinfo
 
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
+# logs
+*.log
 npm-debug.*
 yarn-debug.*
 yarn-error.*
-*.log
-
-# macOS
-.DS_Store
-*.pem
 
 # env files — never commit
 .env
 .env.*
 !.env.example
 
-# signing / credentials
+# keys, signing and credentials
+*.pem
+*.key
+*.p8
+*.p12
+*.jks
 *.keystore
+*.mobileprovision
 credentials.json
 google-services.json
 GoogleService-Info.plist
 
-# typescript
-*.tsbuildinfo
-
-# tooling
-coverage/
+# OS / IDE
+.DS_Store
 .idea/
-
-# generated native folders
-/ios
-/android
