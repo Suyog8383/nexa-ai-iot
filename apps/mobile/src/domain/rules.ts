@@ -1,3 +1,5 @@
+import { ALERT_THRESHOLD_BOUNDS, ALERT_THRESHOLD_STEP, CONDITIONS, METRICS } from '@nexa/contracts/limits';
+
 import type { AlertRule, Condition, Metric, TriggerDuration } from './types';
 
 export const metricUnit: Record<Metric, string> = { temperature: '°C', humidity: '% RH' };
@@ -14,8 +16,9 @@ export const durationLabel: Record<TriggerDuration, string> = {
 
 const durationPhrase: Record<TriggerDuration, string | null> = { immediate: null, '5m': '5 mins', '15m': '15 mins' };
 
-export const thresholdStep: Record<Metric, number> = { temperature: 0.5, humidity: 1 };
-export const thresholdBounds: Record<Metric, [number, number]> = { temperature: [5, 40], humidity: [10, 90] };
+/** Shared with the API so the stepper and server validation always agree. */
+export const thresholdStep = ALERT_THRESHOLD_STEP;
+export const thresholdBounds = ALERT_THRESHOLD_BOUNDS;
 
 export function stepThreshold(metric: Metric, value: number, direction: 1 | -1): number {
   const [min, max] = thresholdBounds[metric];
@@ -61,8 +64,8 @@ function notifyPhrase(notify: AlertRule['notify']): string {
   return 'Log silently';
 }
 
-const metrics: readonly Metric[] = ['temperature', 'humidity'];
-const conditions: readonly Condition[] = ['below', 'above'];
+const metrics: readonly Metric[] = METRICS;
+const conditions: readonly Condition[] = CONDITIONS;
 const durations: readonly TriggerDuration[] = ['immediate', '5m', '15m'];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
