@@ -7,7 +7,7 @@ import { IconTile } from '@/components/ui/IconTile';
 import { Toggle } from '@/components/ui/Toggle';
 import { describeRuleShort } from '@/data/rules';
 import type { AlertRule, Device } from '@/data/types';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useTheme } from '@/theme/useTheme';
 import { spacing } from '@/theme/tokens';
 
 type Props = { rule: AlertRule; device: Device; onToggle: (enabled: boolean) => void };

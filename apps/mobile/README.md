@@ -25,8 +25,9 @@ npx expo-doctor    # dependency and config health
 src/
   app/         routes (Expo Router): (tabs)/ home, devices, assistant, alerts; device/[id]; alert-rule
   components/  reusable UI: ui/, layout/, telemetry/, alerts/, assistant/
-  theme/       design tokens from Stitch + ThemeProvider (system theme with in-app override)
-  data/        domain types, alert-rule logic and tests, mock data
+  theme/       design tokens from Stitch + useTheme (system theme with in-app override)
+  stores/      Zustand stores persisted to AsyncStorage: alert rules, preferences (theme)
+  data/        domain types, alert-rule logic and validation, mock data
   services/    assistant service (canned replies until a real AI backend exists)
 ```
 

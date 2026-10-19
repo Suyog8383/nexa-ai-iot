@@ -4,7 +4,7 @@ import { AppText } from '@/components/ui/AppText';
 import { Badge } from '@/components/ui/Badge';
 import { IconTile } from '@/components/ui/IconTile';
 import type { ActivityItem } from '@/data/types';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useTheme } from '@/theme/useTheme';
 import { spacing } from '@/theme/tokens';
 
 export function ActivityRow({ item, divider }: { item: ActivityItem; divider?: boolean }) {

@@ -60,3 +60,46 @@ function notifyPhrase(notify: AlertRule['notify']): string {
   if (notify.sound) return 'Play buzzer chime';
   return 'Log silently';
 }
+
+const metrics: readonly Metric[] = ['temperature', 'humidity'];
+const conditions: readonly Condition[] = ['below', 'above'];
+const durations: readonly TriggerDuration[] = ['immediate', '5m', '15m'];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+/**
+ * Returns a well-formed rule, or null if `value` isn't one. Used on anything that didn't come
+ * straight from typed code — persisted state today, API payloads later.
+ */
+export function parseAlertRule(value: unknown): AlertRule | null {
+  if (!isRecord(value)) return null;
+  const { id, name, deviceId, metric, condition, threshold, duration, notify, enabled, origin } = value;
+  if (!isNonEmptyString(id) || !isNonEmptyString(name) || !isNonEmptyString(deviceId)) return null;
+  if (!metrics.includes(metric as Metric) || !conditions.includes(condition as Condition)) return null;
+  if (!durations.includes(duration as TriggerDuration)) return null;
+  if (typeof threshold !== 'number' || !Number.isFinite(threshold)) return null;
+  const [min, max] = thresholdBounds[metric as Metric];
+  if (threshold < min || threshold > max) return null;
+  if (!isRecord(notify) || typeof notify.push !== 'boolean' || typeof notify.inApp !== 'boolean' || typeof notify.sound !== 'boolean') return null;
+  if (typeof enabled !== 'boolean') return null;
+  if (origin !== undefined && typeof origin !== 'string') return null;
+
+  return {
+    id,
+    name,
+    deviceId,
+    metric: metric as Metric,
+    condition: condition as Condition,
+    threshold,
+    duration: duration as TriggerDuration,
+    notify: { push: notify.push, inApp: notify.inApp, sound: notify.sound },
+    enabled,
+    ...(origin !== undefined && { origin }),
+  };
+}

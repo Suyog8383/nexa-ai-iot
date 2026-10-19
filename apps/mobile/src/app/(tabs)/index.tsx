@@ -17,7 +17,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { TrendChart } from '@/components/ui/TrendChart';
 import { homeActivity, livingRoomMonitor as device, todayTrend } from '@/data/mock';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useTheme } from '@/theme/useTheme';
 import { radius, spacing } from '@/theme/tokens';
 
 const ASSISTANT_PROMPT = 'Why did temperature drop at 6 AM?';

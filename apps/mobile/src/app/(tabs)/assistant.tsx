@@ -10,11 +10,11 @@ import { PulseDot } from '@/components/ui/Badge';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { IconTile } from '@/components/ui/IconTile';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { useAlerts } from '@/data/AlertsStore';
 import { seededConversation, suggestedInquiries } from '@/data/mock';
 import type { ChatMessage } from '@/data/types';
 import { askNexa } from '@/services/assistant';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useAlertsStore } from '@/stores/alertsStore';
+import { useTheme } from '@/theme/useTheme';
 import { radius, spacing, typography } from '@/theme/tokens';
 
 function timeNow() {
@@ -24,7 +24,7 @@ function timeNow() {
 export default function AssistantScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { rules } = useAlerts();
+  const rules = useAlertsStore((s) => s.rules);
   const { q } = useLocalSearchParams<{ q?: string }>();
   const scrollRef = useRef<ScrollView>(null);
 

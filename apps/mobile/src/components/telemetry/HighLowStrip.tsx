@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import { Inset } from '@/components/ui/Card';
 import { Icon, type IconName } from '@/components/ui/Icon';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useTheme } from '@/theme/useTheme';
 import { radius, spacing } from '@/theme/tokens';
 
 type Stat = { label: string; value: string; icon?: IconName; caption?: string; emphasis?: boolean };

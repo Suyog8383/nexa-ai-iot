@@ -21,13 +21,14 @@ Shared request/response types live in `packages/contracts` and are used by both 
 - **Navigation:** a root stack containing four tabs (Home, Devices, AI Assistant, Alerts), plus Device Details and Create Alert Rule pushed over the tab bar.
 - **Design source:** the approved Google Stitch project. Where the dark and light designs disagree on text, the dark copy wins. Screens not designed in Stitch (Pair Device, Notifications, Profile) are placeholders.
 - **Theme:** colour tokens from Stitch for both themes, with a shared type and shape scale. The app follows the system theme, with an in-app override.
+- **Client state:** Zustand stores in `src/stores/`, persisted to AsyncStorage under versioned keys (`nexa.alerts`, `nexa.preferences`). Stored data is validated on load: invalid entries are dropped, and unreadable data falls back to defaults. Actions are ignored until loading finishes. If storage can't be read, the app keeps working in memory and never overwrites what's stored. The splash screen stays up until the stores are loaded.
 - **Data:** mock data only. The AI assistant sits behind a service interface (`src/services/assistant.ts`) and returns canned replies.
 
 ## Decisions
 
 | Decision | Choice |
 | --- | --- |
-| Shared client state | Zustand (migration from React Context pending) |
+| Shared client state | Zustand (`src/stores/`) |
 | Local persistence | AsyncStorage for alert rules and preferences |
 | Server state | TanStack Query, introduced with the API |
 | Units | Celsius only for the MVP |
