@@ -2,6 +2,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { ResultState } from '@/components/feedback/ResultState';
+import { StateCard } from '@/components/feedback/StateCard';
 import { Screen } from '@/components/layout/Screen';
 import { StackHeader } from '@/components/layout/StackHeader';
 import { AppText } from '@/components/ui/AppText';
@@ -12,20 +14,46 @@ import { Icon, type IconName } from '@/components/ui/Icon';
 import { IconTile } from '@/components/ui/IconTile';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Toggle } from '@/components/ui/Toggle';
-import { livingRoomMonitor as device } from '@/data/mock';
-import { defaultRuleName, describeRuleSummary, formatThreshold, stepThreshold } from '@/data/rules';
-import type { Condition, Metric, NotifyPrefs, TriggerDuration } from '@/data/types';
+import { defaultRuleName, describeRuleSummary, formatThreshold, stepThreshold } from '@/domain/rules';
+import type { Condition, Device, Metric, NotifyPrefs, TriggerDuration } from '@/domain/types';
+import { usePrimaryDevice } from '@/hooks/useDevices';
 import { useAlertsStore } from '@/stores/alertsStore';
 import { useTheme } from '@/theme/useTheme';
 import { radius, spacing, typography } from '@/theme/tokens';
 
 const DEFAULT_THRESHOLD: Record<Metric, number> = { temperature: 19.5, humidity: 60 };
 
+type Params = { from?: string; origin?: string; metric?: Metric; condition?: Condition; threshold?: string };
+
 export default function CreateAlertRuleScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<Params>();
+  const deviceResult = usePrimaryDevice();
+  const { data: device } = deviceResult;
+
+  if (device) return <AlertRuleForm device={device} params={params} />;
+
+  const header = <StackHeader layout="centered" backLabel={params.from === 'assistant' ? 'Assistant' : 'Alerts'} title="New Alert Rule" />;
+  return (
+    <Screen header={header}>
+      {device === null ? (
+        <StateCard
+          icon="sensors"
+          title="No devices yet"
+          message="Pair an ESP32 sensor before creating alert rules."
+          action={{ label: 'Pair New Device', onPress: () => router.push('/pair') }}
+        />
+      ) : (
+        <ResultState {...deviceResult} />
+      )}
+    </Screen>
+  );
+}
+
+function AlertRuleForm({ device, params }: { device: Device; params: Params }) {
   const { colors } = useTheme();
   const router = useRouter();
   const addRule = useAlertsStore((s) => s.addRule);
-  const params = useLocalSearchParams<{ from?: string; origin?: string; metric?: Metric; condition?: Condition; threshold?: string }>();
 
   const [metric, setMetric] = useState<Metric>(params.metric ?? 'temperature');
   const [condition, setCondition] = useState<Condition>(params.condition ?? 'below');

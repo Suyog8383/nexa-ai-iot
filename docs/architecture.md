@@ -22,7 +22,7 @@ Shared request/response types live in `packages/contracts` and are used by both 
 - **Design source:** the approved Google Stitch project. Where the dark and light designs disagree on text, the dark copy wins. Screens not designed in Stitch (Pair Device, Notifications, Profile) are placeholders.
 - **Theme:** colour tokens from Stitch for both themes, with a shared type and shape scale. The app follows the system theme, with an in-app override.
 - **Client state:** Zustand stores in `src/stores/`, persisted to AsyncStorage under versioned keys (`nexa.alerts`, `nexa.preferences`). Stored data is validated on load: invalid entries are dropped, and unreadable data falls back to defaults. Actions are ignored until loading finishes. If storage can't be read, the app keeps working in memory and never overwrites what's stored. The splash screen stays up until the stores are loaded.
-- **Data:** mock data only. The AI assistant sits behind a service interface (`src/services/assistant.ts`) and returns canned replies.
+- **Data:** mock data only, read through hooks in `src/hooks/`. Hooks return `{ data, isLoading, error }`, matching TanStack Query's result, so each can become a `useQuery` without its screens changing. A lint rule stops screens and components from importing `src/mocks/` directly. Domain types and rule logic live in `src/domain/`. The AI assistant sits behind a service interface (`src/services/assistant.ts`) and returns canned replies.
 
 ## Decisions
 

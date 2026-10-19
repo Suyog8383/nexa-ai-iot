@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { AlertHistoryCard } from '@/components/alerts/AlertHistoryCard';
 import { AlertRuleCard } from '@/components/alerts/AlertRuleCard';
 import { AppHeader } from '@/components/layout/AppHeader';
+import { ResultState } from '@/components/feedback/ResultState';
 import { Screen } from '@/components/layout/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { PulseDot } from '@/components/ui/Badge';
@@ -11,7 +12,8 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { IconTile } from '@/components/ui/IconTile';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { alertHistory, devices } from '@/data/mock';
+import { useAlertHistory } from '@/hooks/useAlertHistory';
+import { useDevices } from '@/hooks/useDevices';
 import { useAlertsStore } from '@/stores/alertsStore';
 import { useTheme } from '@/theme/useTheme';
 import { spacing } from '@/theme/tokens';
@@ -22,6 +24,9 @@ export default function AlertsScreen() {
   const rules = useAlertsStore((s) => s.rules);
   const setRuleEnabled = useAlertsStore((s) => s.setRuleEnabled);
   const enabled = rules.filter((r) => r.enabled).length;
+  const devicesResult = useDevices();
+  const historyResult = useAlertHistory();
+  const devices = devicesResult.data ?? [];
 
   return (
     <Screen header={<AppHeader />} withTabBar>
@@ -53,10 +58,15 @@ export default function AlertsScreen() {
       </View>
 
       <SectionHeader title="Comfort Thresholds" count={`${enabled} of ${rules.length} On`} action={{ label: 'Edit All' }} />
-      {rules.map((rule) => {
-        const device = devices.find((d) => d.id === rule.deviceId) ?? devices[0];
-        return <AlertRuleCard key={rule.id} rule={rule} device={device} onToggle={(v) => setRuleEnabled(rule.id, v)} />;
-      })}
+      {!devicesResult.data ? (
+        <ResultState {...devicesResult} />
+      ) : (
+        rules.map((rule) => {
+          // Rules carry copy about their sensor; fall back to the first sensor if theirs is gone.
+          const device = devices.find((d) => d.id === rule.deviceId) ?? devices[0];
+          return device ? <AlertRuleCard key={rule.id} rule={rule} device={device} onToggle={(v) => setRuleEnabled(rule.id, v)} /> : null;
+        })
+      )}
 
       <Button
         variant="accent"
@@ -68,9 +78,7 @@ export default function AlertsScreen() {
       />
 
       <SectionHeader title="Recent Alert History" caption="Past 7 Days" />
-      {alertHistory.map((item) => (
-        <AlertHistoryCard key={item.id} item={item} />
-      ))}
+      {historyResult.data ? historyResult.data.map((item) => <AlertHistoryCard key={item.id} item={item} />) : <ResultState {...historyResult} />}
     </Screen>
   );
 }

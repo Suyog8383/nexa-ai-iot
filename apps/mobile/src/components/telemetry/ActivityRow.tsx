@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import { Badge } from '@/components/ui/Badge';
 import { IconTile } from '@/components/ui/IconTile';
-import type { ActivityItem } from '@/data/types';
+import type { ActivityItem } from '@/domain/types';
 import { useTheme } from '@/theme/useTheme';
 import { spacing } from '@/theme/tokens';
 

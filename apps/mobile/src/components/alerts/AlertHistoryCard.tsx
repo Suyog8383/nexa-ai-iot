@@ -4,7 +4,7 @@ import { AppText } from '@/components/ui/AppText';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
-import type { AlertHistoryItem } from '@/data/types';
+import type { AlertHistoryItem } from '@/domain/types';
 import { useTheme } from '@/theme/useTheme';
 import { spacing } from '@/theme/tokens';
 

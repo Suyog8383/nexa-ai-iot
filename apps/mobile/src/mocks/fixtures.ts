@@ -1,8 +1,9 @@
 /**
  * Mock telemetry matching the approved Stitch designs (dark-theme copy is canonical).
- * Replace with live ESP32 / backend data via `src/services`.
+ * Screens never import this directly — they read it through `src/hooks`, which is where
+ * live ESP32 / backend data will be wired in.
  */
-import type { ActivityItem, AlertHistoryItem, AlertRule, ChatMessage, Device, TrendPoint } from './types';
+import type { ActivityItem, AlertHistoryItem, AlertRule, ChatMessage, Device, TrendPoint } from '@/domain/types';
 
 export const livingRoomMonitor: Device = {
   id: 'living-room-monitor',
@@ -139,3 +140,7 @@ export const seededConversation: ChatMessage[] = [
     },
   },
 ];
+
+/** Per-device lookups, shaped like the API will be: data is fetched by device id. */
+export const trendsByDevice: Record<string, TrendPoint[]> = { [livingRoomMonitor.id]: todayTrend };
+export const activityByDevice: Record<string, ActivityItem[]> = { [livingRoomMonitor.id]: deviceActivity };

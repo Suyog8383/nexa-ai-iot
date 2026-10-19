@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
-import type { StatusKind } from '@/data/types';
+import type { StatusKind } from '@/domain/types';
 import { useTheme } from '@/theme/useTheme';
 import { radius } from '@/theme/tokens';
 
