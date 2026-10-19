@@ -8,19 +8,29 @@ AI-powered indoor environment monitoring: an ESP32 + BME280 sensor reports tempe
 | --- | --- | --- |
 | [`apps/mobile`](apps/mobile) | React Native + Expo app (Expo Router, TypeScript) | Active — MVP UI on mock data |
 | [`apps/api`](apps/api) | Backend API (Node.js + TypeScript, PostgreSQL) | Planned |
-| [`packages/contracts`](packages/contracts) | Shared API types and schemas | Planned |
+| [`packages/contracts`](packages/contracts) | Shared API schemas (zod), types and limits | Active — API contract v1 |
 | [`firmware/esp32-bme280`](firmware/esp32-bme280) | ESP32 + BME280 sensor firmware | Planned |
 | [`infra`](infra) | Deployment configuration | Planned |
 | [`docs`](docs) | Architecture and decisions | [architecture.md](docs/architecture.md) |
 
+## Setup
+
+This is an npm workspaces monorepo: install once, from the repository root.
+
+```bash
+npm ci             # installs every workspace (one root package-lock.json)
+npm test           # all workspaces
+npm run typecheck  # all workspaces
+npm run lint
+```
+
 ## Run the mobile app
 
-Requires Node.js and the Expo Go app (SDK 57) on an Android device.
+Requires the Expo Go app (SDK 57) on an Android device.
 
 ```bash
 cd apps/mobile
-npm ci
 npx expo start
 ```
 
-Scan the QR code with Expo Go. See [`apps/mobile/README.md`](apps/mobile/README.md) for checks and scripts.
+Scan the QR code with Expo Go. See [`apps/mobile/README.md`](apps/mobile/README.md) for app-specific checks.

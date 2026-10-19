@@ -33,22 +33,22 @@ Shared request/response types live in `packages/contracts` and are used by both 
 | Server state | TanStack Query, introduced with the API |
 | Units | Celsius only for the MVP |
 | Platform priority | Android first; keep iOS compatible |
-| Monorepo tooling | npm workspaces, added when `apps/api` starts (see below) |
+| Monorepo tooling | npm workspaces, one root lockfile |
+| API | Node.js + TypeScript + Fastify 5, modular monolith (`apps/api`) |
+| Database | PostgreSQL 16 via Docker Compose (`infra/`) locally; Drizzle ORM + committed SQL migrations |
+| API contract | zod schemas in `@nexa/contracts`, shared by the app and the API |
+| Device → API transport | HTTPS `POST /v1/telemetry` with a per-device bearer token; MQTT revisited if device count, frequency or server→device commands require it |
+| Reporting interval | 30 s default (10–3600 s allowed) |
+| App → API auth (MVP) | One owner token from `.env`, for local/LAN development only. The API is not exposed to the internet until real user accounts exist |
 
-## Monorepo plan
+## Monorepo
 
-Today `apps/mobile` is a standalone npm project with its own `package-lock.json`. When the API work starts:
-
-1. Add a root `package.json` with `"workspaces": ["apps/*", "packages/*"]` and a single root lockfile.
-2. Create `packages/contracts` as `@nexa/contracts` and depend on it from both apps.
-3. Keep exactly one version of `react` and `react-native` in the repo. Expo's Metro config detects workspaces automatically from SDK 52 onward, so no custom `metro.config.js` is needed.
-
-The firmware is built with its own toolchain and stays outside the npm workspaces.
+npm workspaces (`apps/mobile`, `packages/contracts`; `apps/api` joins when it's created), installed once from the root. Expo's Metro config detects the workspace automatically (SDK 52+), so there is no custom `metro.config.js`. Keep exactly one version of `react` and `react-native` in the repo. The firmware is built with its own toolchain and stays outside the npm workspaces.
 
 ## Open questions
 
-- API framework, hosting and authentication.
-- Device-to-API transport (HTTP or MQTT), reporting interval, and device provisioning/pairing.
-- Telemetry storage and retention in PostgreSQL (plain tables or a time-series extension).
+- Hosting, and real user accounts (required before any deployment).
+- Device provisioning/pairing beyond flashing the token manually.
+- Telemetry retention; partitioning or a time-series extension if volume grows.
 - AI provider and what sensor context the assistant receives.
 - Push notification delivery (Expo push service vs FCM directly). This needs EAS development builds.

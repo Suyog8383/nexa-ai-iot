@@ -1,0 +1,13 @@
+{
+  "name": "nexa-ai-iot",
+  "private": true,
+  "workspaces": [
+    "apps/mobile",
+    "packages/contracts"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  }
+}

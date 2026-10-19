@@ -4,8 +4,9 @@ React Native app built with Expo SDK 57, Expo Router and TypeScript. The UI impl
 
 ## Run
 
+Install from the repository root (`npm ci` there), then from this folder:
+
 ```bash
-npm ci
 npx expo start          # scan the QR code with Expo Go (SDK 57)
 npx expo start --clear  # after dependency or config changes
 ```

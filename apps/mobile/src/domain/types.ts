@@ -1,8 +1,10 @@
+import type { Condition, Metric } from '@nexa/contracts/limits';
+
 import type { IconName } from '@/components/ui/Icon';
 
+export type { Condition, Metric };
+
 export type DeviceStatus = 'online' | 'warning' | 'offline';
-export type Metric = 'temperature' | 'humidity';
-export type Condition = 'below' | 'above';
 export type TriggerDuration = 'immediate' | '5m' | '15m';
 export type StatusKind = 'success' | 'warning' | 'danger' | 'neutral' | 'primary';
 
