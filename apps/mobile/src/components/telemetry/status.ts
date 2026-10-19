@@ -1,4 +1,4 @@
-import type { DeviceStatus, StatusKind } from '@/data/types';
+import type { DeviceStatus, StatusKind } from '@/domain/types';
 
 export function statusBadge(status: DeviceStatus): { label: string; kind: StatusKind } {
   switch (status) {

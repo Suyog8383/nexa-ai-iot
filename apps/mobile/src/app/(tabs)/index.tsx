@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppHeader } from '@/components/layout/AppHeader';
+import { ResultState } from '@/components/feedback/ResultState';
+import { StateCard } from '@/components/feedback/StateCard';
 import { Screen } from '@/components/layout/Screen';
 import { ActivityRow } from '@/components/telemetry/ActivityRow';
 import { HighLowStrip } from '@/components/telemetry/HighLowStrip';
@@ -16,25 +18,63 @@ import { RangeBar } from '@/components/ui/RangeBar';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { TrendChart } from '@/components/ui/TrendChart';
-import { homeActivity, livingRoomMonitor as device, todayTrend } from '@/data/mock';
+import type { ActivityItem, Device, TrendPoint } from '@/domain/types';
+import { combine } from '@/hooks/result';
+import { usePrimaryDevice } from '@/hooks/useDevices';
+import { useHomeActivity, useTodayTrend } from '@/hooks/useTelemetry';
 import { useTheme } from '@/theme/useTheme';
 import { radius, spacing } from '@/theme/tokens';
 
 const ASSISTANT_PROMPT = 'Why did temperature drop at 6 AM?';
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const deviceResult = usePrimaryDevice();
+  const trendResult = useTodayTrend(deviceResult.data?.id);
+  const activityResult = useHomeActivity();
+  const header = <AppHeader status={{ label: '1 Sensor Online', kind: 'success' }} />;
+
+  const { data: device } = deviceResult;
+  const { data: trend } = trendResult;
+  const { data: activity } = activityResult;
+
+  if (device === null) {
+    return (
+      <Screen header={<AppHeader />} withTabBar>
+        <StateCard
+          icon="sensors"
+          title="No devices yet"
+          message="Pair an ESP32 sensor to start monitoring your home climate."
+          action={{ label: 'Pair New Device', onPress: () => router.push('/pair') }}
+        />
+      </Screen>
+    );
+  }
+
+  if (!device || !trend || !activity) {
+    return (
+      <Screen header={header} withTabBar>
+        <ResultState {...combine(deviceResult, trendResult, activityResult)} />
+      </Screen>
+    );
+  }
+
+  return <HomeDashboard header={header} device={device} trend={trend} activity={activity} />;
+}
+
+function HomeDashboard({ header, device, trend, activity }: { header: React.ReactNode; device: Device; trend: TrendPoint[]; activity: ActivityItem[] }) {
   const { colors } = useTheme();
   const router = useRouter();
   const [metric, setMetric] = useState<'temp' | 'humidity'>('temp');
 
   const [tMin, tMax] = device.temperatureTarget;
   const [hMin, hMax] = device.humidityRange;
-  const series = todayTrend.slice(3).map((p) => (metric === 'temp' ? p.temperature : p.humidity));
+  const series = trend.slice(3).map((p) => (metric === 'temp' ? p.temperature : p.humidity));
   const unit = metric === 'temp' ? '°C' : '%';
   const peakIndex = series.indexOf(Math.max(...series));
 
   return (
-    <Screen header={<AppHeader status={{ label: '1 Sensor Online', kind: 'success' }} />} withTabBar>
+    <Screen header={header} withTabBar>
       {/* Hero */}
       <Card hero style={{ gap: spacing.sm }}>
         <View style={styles.rowBetween}>
@@ -162,7 +202,7 @@ export default function HomeScreen() {
           </AppText>
         </View>
         <Inset style={{ paddingVertical: 0 }}>
-          {homeActivity.map((a) => (
+          {activity.map((a) => (
             <ActivityRow key={a.id} item={a} />
           ))}
         </Inset>

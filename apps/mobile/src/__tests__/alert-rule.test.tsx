@@ -4,7 +4,7 @@ import type { ReactElement, ReactNode } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import CreateAlertRuleScreen from '@/app/alert-rule';
-import { initialRules } from '@/data/mock';
+import { initialRules } from '@/mocks/fixtures';
 import { alertsStore } from '@/stores/alertsStore';
 import { hydrated } from '@/test-utils/storage';
 

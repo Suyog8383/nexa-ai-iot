@@ -3,15 +3,16 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppHeader } from '@/components/layout/AppHeader';
+import { ResultState } from '@/components/feedback/ResultState';
+import { StateCard } from '@/components/feedback/StateCard';
 import { Screen } from '@/components/layout/Screen';
 import { DeviceCard } from '@/components/telemetry/DeviceCard';
 import { AppText } from '@/components/ui/AppText';
 import { PulseDot } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { devices } from '@/data/mock';
+import { useDevices } from '@/hooks/useDevices';
 import { useTheme } from '@/theme/useTheme';
 import { radius, spacing } from '@/theme/tokens';
 
@@ -19,6 +20,8 @@ export default function DevicesScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const [filter, setFilter] = useState<'all' | 'sensors'>('all');
+  const devicesResult = useDevices();
+  const devices = devicesResult.data ?? [];
   const connected = devices.filter((d) => d.status !== 'offline').length;
 
   return (
@@ -50,16 +53,10 @@ export default function DevicesScreen() {
         ]}
       />
 
-      {devices.length === 0 ? (
-        <Card style={styles.empty}>
-          <Icon name="sensors" size={32} color={colors.textMuted} />
-          <AppText variant="headlineSm" color="textStrong">
-            No devices yet
-          </AppText>
-          <AppText variant="bodyMd" color="textMuted" align="center">
-            Pair an ESP32 sensor to start monitoring your home climate.
-          </AppText>
-        </Card>
+      {!devicesResult.data ? (
+        <ResultState {...devicesResult} />
+      ) : devices.length === 0 ? (
+        <StateCard icon="sensors" title="No devices yet" message="Pair an ESP32 sensor to start monitoring your home climate." />
       ) : (
         devices.map((d) => <DeviceCard key={d.id} device={d} />)
       )}
@@ -73,5 +70,4 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   inline: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   refresh: { width: 40, height: 40, borderRadius: radius.lg, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  empty: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
 });

@@ -2,6 +2,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { ResultState } from '@/components/feedback/ResultState';
+import { StateCard } from '@/components/feedback/StateCard';
 import { Screen } from '@/components/layout/Screen';
 import { StackHeader } from '@/components/layout/StackHeader';
 import { ActivityRow } from '@/components/telemetry/ActivityRow';
@@ -16,7 +18,9 @@ import { IconTile } from '@/components/ui/IconTile';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Toggle } from '@/components/ui/Toggle';
 import { TrendChart } from '@/components/ui/TrendChart';
-import { deviceActivity, devices, todayTrend } from '@/data/mock';
+import { combine } from '@/hooks/result';
+import { useDevice } from '@/hooks/useDevices';
+import { useDeviceActivity, useTodayTrend } from '@/hooks/useTelemetry';
 import { useTheme } from '@/theme/useTheme';
 import { radius, spacing } from '@/theme/tokens';
 
@@ -24,7 +28,12 @@ export default function DeviceDetailsScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const device = devices.find((d) => d.id === id);
+  const deviceResult = useDevice(id);
+  const trendResult = useTodayTrend(id);
+  const activityResult = useDeviceActivity(id);
+  const { data: device } = deviceResult;
+  const { data: trend } = trendResult;
+  const { data: activity } = activityResult;
 
   const [range, setRange] = useState<'today' | 'week'>('today');
   const [favorite, setFavorite] = useState(false);
@@ -33,16 +42,18 @@ export default function DeviceDetailsScreen() {
 
   const header = <StackHeader backLabel="Devices" title="Device Details" right={<Avatar />} />;
 
-  if (!device) {
+  if (device === null) {
     return (
       <Screen header={header}>
-        <Card style={styles.missing}>
-          <Icon name="error" size={32} color={colors.danger.dot} />
-          <AppText variant="headlineSm" color="textStrong">
-            Device not found
-          </AppText>
-          <Button label="Back to Devices" variant="secondary" onPress={() => router.back()} />
-        </Card>
+        <StateCard tone="danger" icon="error" title="Device not found" action={{ label: 'Back to Devices', onPress: () => router.back() }} />
+      </Screen>
+    );
+  }
+
+  if (!device || !trend || !activity) {
+    return (
+      <Screen header={header}>
+        <ResultState {...combine(deviceResult, trendResult, activityResult)} />
       </Screen>
     );
   }
@@ -153,7 +164,7 @@ export default function DeviceDetailsScreen() {
           ]}
         />
         {range === 'today' ? (
-          <TrendChart values={todayTrend.map((p) => p.temperature)} labels={['12 AM', '6 AM', '12 PM', '6 PM', 'Now']} height={110} rangePadding={2.5} />
+          <TrendChart values={trend.map((p) => p.temperature)} labels={['12 AM', '6 AM', '12 PM', '6 PM', 'Now']} height={110} rangePadding={2.5} />
         ) : (
           <Inset style={styles.placeholder}>
             <Icon name="timeline" size={24} color={colors.textMuted} />
@@ -174,7 +185,7 @@ export default function DeviceDetailsScreen() {
             All Normal
           </AppText>
         </View>
-        {deviceActivity.map((a, i) => (
+        {activity.map((a, i) => (
           <ActivityRow key={a.id} item={a} divider={i > 0} />
         ))}
       </Card>
@@ -305,5 +316,4 @@ const styles = StyleSheet.create({
   accordionBody: { padding: spacing.md, gap: spacing.sm + 4, borderTopWidth: StyleSheet.hairlineWidth },
   alertRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm + 4 },
   avatar: { width: 32, height: 32, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
-  missing: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xl },
 });

@@ -2,8 +2,8 @@
  * Mock Nexa AI responder. Swap `askNexa` for a real model call (e.g. a backend
  * endpoint that grounds Claude on the device's telemetry) without touching the UI.
  */
-import { seededConversation } from '@/data/mock';
-import type { ChatMessage } from '@/data/types';
+import { seededConversation } from '@/mocks/fixtures';
+import type { ChatMessage } from '@/domain/types';
 
 const seededReply = seededConversation.find((m) => m.role === 'assistant')!;
 

@@ -10,8 +10,8 @@ import { PulseDot } from '@/components/ui/Badge';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { IconTile } from '@/components/ui/IconTile';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { seededConversation, suggestedInquiries } from '@/data/mock';
-import type { ChatMessage } from '@/data/types';
+import type { ChatMessage } from '@/domain/types';
+import { useAssistantIntro } from '@/hooks/useAssistantIntro';
 import { askNexa } from '@/services/assistant';
 import { useAlertsStore } from '@/stores/alertsStore';
 import { useTheme } from '@/theme/useTheme';
@@ -28,7 +28,10 @@ export default function AssistantScreen() {
   const { q } = useLocalSearchParams<{ q?: string }>();
   const scrollRef = useRef<ScrollView>(null);
 
-  const [messages, setMessages] = useState<ChatMessage[]>(seededConversation);
+  const intro = useAssistantIntro();
+  // Read once on mount. If the intro ever loads asynchronously, seed `messages` when it arrives.
+  const introLength = intro.data?.conversation.length ?? 0;
+  const [messages, setMessages] = useState<ChatMessage[]>(intro.data?.conversation ?? []);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
@@ -61,8 +64,8 @@ export default function AssistantScreen() {
   }, [q]);
 
   useEffect(() => {
-    if (messages.length > seededConversation.length || pending) scrollRef.current?.scrollToEnd({ animated: true });
-  }, [messages.length, pending]);
+    if (messages.length > introLength || pending) scrollRef.current?.scrollToEnd({ animated: true });
+  }, [messages.length, pending, introLength]);
 
 
   const composer = (
@@ -118,7 +121,7 @@ export default function AssistantScreen() {
 
         <SectionHeader title="Suggested Inquiries" uppercase action={{ label: 'Instant Context', icon: 'bolt' }} />
         <View style={{ gap: spacing.sm }}>
-          {suggestedInquiries.map((s) => (
+          {(intro.data?.suggestions ?? []).map((s) => (
             <Pressable
               key={s.text}
               accessibilityRole="button"

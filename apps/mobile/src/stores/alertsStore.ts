@@ -2,9 +2,9 @@ import { persist } from 'zustand/middleware';
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
 
-import { initialRules } from '@/data/mock';
-import { parseAlertRule } from '@/data/rules';
-import type { AlertRule } from '@/data/types';
+import { initialRules } from '@/mocks/fixtures';
+import { parseAlertRule } from '@/domain/rules';
+import type { AlertRule } from '@/domain/types';
 
 import { createSafeStorage, defaultBackend, type HydrationStatus, type KeyValueStorage } from './persistStorage';
 

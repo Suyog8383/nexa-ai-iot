@@ -5,8 +5,8 @@ import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { IconTile } from '@/components/ui/IconTile';
 import { Toggle } from '@/components/ui/Toggle';
-import { describeRuleShort } from '@/data/rules';
-import type { AlertRule, Device } from '@/data/types';
+import { describeRuleShort } from '@/domain/rules';
+import type { AlertRule, Device } from '@/domain/types';
 import { useTheme } from '@/theme/useTheme';
 import { spacing } from '@/theme/tokens';
 

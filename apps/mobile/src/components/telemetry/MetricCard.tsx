@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { IconTile } from '@/components/ui/IconTile';
 import type { IconName } from '@/components/ui/Icon';
-import type { StatusKind } from '@/data/types';
+import type { StatusKind } from '@/domain/types';
 import { useTheme } from '@/theme/useTheme';
 import { spacing } from '@/theme/tokens';
 

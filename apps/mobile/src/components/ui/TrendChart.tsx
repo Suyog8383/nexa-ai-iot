@@ -23,6 +23,17 @@ export function TrendChart({ values, labels, height = 140, markerIndex, rangePad
   const { colors } = useTheme();
   const [width, setWidth] = useState(0);
 
+  // A curve needs two points; fewer would produce NaN coordinates.
+  if (values.length < 2) {
+    return (
+      <View style={[styles.empty, { height }]}>
+        <AppText variant="bodySm" color="textMuted" align="center">
+          Not enough readings yet today.
+        </AppText>
+      </View>
+    );
+  }
+
   const min = Math.min(...values) - rangePadding;
   const max = Math.max(...values) + rangePadding;
   const pad = 8;
@@ -90,5 +101,6 @@ function smoothPath(pts: { x: number; y: number }[]): string {
 }
 
 const styles = StyleSheet.create({
+  empty: { alignItems: 'center', justifyContent: 'center' },
   labels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
 });

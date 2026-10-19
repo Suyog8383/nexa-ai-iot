@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
-import type { AlertRule } from '@/data/types';
+import type { AlertRule } from '@/domain/types';
 import { ALERTS_STORAGE_KEY, ALERTS_STORAGE_VERSION, createAlertsStore, type NewAlertRule } from '@/stores/alertsStore';
 import { flush, hydrated, memoryBackend } from '@/test-utils/storage';
 
