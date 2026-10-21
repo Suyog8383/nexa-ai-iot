@@ -3,6 +3,7 @@ import { serializerCompiler, validatorCompiler, type ZodTypeProvider } from 'fas
 
 import type { Config } from './config';
 import type { Database } from './db/client';
+import { deviceRoutes } from './modules/devices/routes';
 import { healthRoutes } from './modules/health/routes';
 import { registerProblemHandlers } from './shared/problem';
 
@@ -30,7 +31,7 @@ export const REDACTED_PATHS = [
 ];
 
 type BuildOptions = {
-  config: Pick<Config, 'logLevel'>;
+  config: Pick<Config, 'logLevel' | 'ownerToken'>;
   database: Database;
   /** Where log lines go (stdout by default). Tests pass a stream to inspect real, redacted output. */
   logStream?: { write: (line: string) => void };
@@ -49,6 +50,7 @@ export function buildApp({ config, database, logStream }: BuildOptions) {
   registerProblemHandlers(app);
 
   app.register(healthRoutes);
+  app.register(deviceRoutes, { ownerToken: config.ownerToken });
 
   return app;
 }
