@@ -2,7 +2,40 @@
 
 Fastify 5 + TypeScript + PostgreSQL 16, as a modular monolith. Request and response schemas come from `@nexa/contracts`. Design decisions are in [docs/architecture.md](../../docs/architecture.md).
 
-**Status:** skeleton. Only `GET /v1/health` exists, and the database has only the `devices` table. Devices, tokens, telemetry and alerts come in later PRs.
+**Status:** health check, device registration and device tokens. Telemetry and alerts come in later PRs.
+
+## Endpoints
+
+| Method & path | Auth | Purpose |
+| --- | --- | --- |
+| `GET /v1/health` | none | 200 `ok` / 503 `degraded` depending on the database |
+| `POST /v1/devices` | owner | Register a device. **Returns its device token once.** |
+| `GET /v1/devices` | owner | List devices (oldest first) |
+| `GET /v1/devices/:id` | owner | One device |
+| `POST /v1/devices/:id/token` | owner | Replace the device token (the old one stops working immediately). **Returns the new token once.** |
+
+**Owner auth:** `Authorization: Bearer <OWNER_TOKEN>`. It's checked before the request body is read, and a missing or wrong token gets `401` with `WWW-Authenticate: Bearer`.
+
+**Device tokens:**
+- Format `nxd_<device id>.<43 base64url chars>`: 256 random bits from `crypto.randomBytes`.
+- Only the SHA-256 hash is stored; comparison is constant-time.
+- Responses that carry a token are sent with `Cache-Control: no-store`.
+- List and detail responses never include tokens or hashes.
+
+**Device status** is derived on the server from `last_seen_at`, and clients can't set it:
+- `never_seen`: no telemetry yet
+- `online`: last seen within 3 × the device's reporting interval (90 s at the default 30 s; the multiplier is `ONLINE_INTERVALS` in `@nexa/contracts/limits`)
+- `offline`: otherwise
+
+```bash
+OWNER=$(sed -n 's/^OWNER_TOKEN=//p' apps/api/.env)
+curl -s -X POST http://127.0.0.1:4000/v1/devices -H "Authorization: Bearer $OWNER" \
+  -H 'content-type: application/json' \
+  -d '{"name":"Living Room Monitor","room":"Living Room","board":"ESP32","sensor":"BME280"}'
+curl -s http://127.0.0.1:4000/v1/devices -H "Authorization: Bearer $OWNER"
+```
+
+There's no CORS (the native app doesn't need it) and no rate limiting yet. Rate limiting arrives with telemetry ingestion.
 
 ## Setup (once)
 
@@ -49,6 +82,7 @@ npm run test:integration -w @nexa/api    # needs the test database (npm run db:u
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
 | `DATABASE_URL` | yes | — | `postgres://` URL of the dev (or deployed) database |
+| `OWNER_TOKEN` | yes | — | At least 32 characters. **Development only:** the API refuses to start with `NODE_ENV=production` until real user accounts exist |
 | `TEST_DATABASE_URL` | tests only | — | Must point to a database whose name ends in `_test` |
 | `HOST` | no | `127.0.0.1` | Set to `0.0.0.0` only to reach the API from a phone on your LAN |
 | `PORT` | no | `4000` | |
@@ -60,4 +94,4 @@ The API checks these at startup and exits with a message that names the bad vari
 ## Errors and logging
 
 - **Errors** are `application/problem+json` (RFC 9457), with `type` values like `urn:nexa:problem:validation`. A 422 lists field paths such as `readings.0.humidityPct`. 5xx responses never include internal details; those go to the log.
-- **Logs** are JSON (pino). `authorization` and `cookie` headers, and fields named `token`, `deviceToken`, `password`, `databaseUrl` or `connectionString`, are replaced with `[REDACTED]`.
+- **Logs** are JSON (pino). Request headers aren't logged, and `authorization`/`cookie` headers and fields named `token`, `deviceToken`, `password`, `databaseUrl` or `connectionString` are replaced with `[REDACTED]` if anything ever tries to log them.
