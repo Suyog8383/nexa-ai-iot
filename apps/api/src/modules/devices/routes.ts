@@ -26,12 +26,12 @@ export const deviceRoutes: FastifyPluginAsyncZod<{ ownerToken: string }> = async
   app.get('/v1/devices', { schema: { response: { 200: DeviceList } } }, async () => {
     const rows = await repo.listDevices(app.database.db);
     const now = new Date();
-    return { items: rows.map((row) => toApiDevice(row, now)) };
+    return { items: rows.map(({ device, latest }) => toApiDevice(device, latest, now)) };
   });
 
   app.get('/v1/devices/:id', { schema: { params: Params, response: { 200: Device } } }, async (request, reply) => {
-    const row = await repo.findDevice(app.database.db, request.params.id);
-    return row ? toApiDevice(row) : sendProblem(reply, problem(404, 'No device with this id.'));
+    const row = await repo.findDeviceWithLatest(app.database.db, request.params.id);
+    return row ? toApiDevice(row.device, row.latest) : sendProblem(reply, problem(404, 'No device with this id.'));
   });
 
   app.post('/v1/devices/:id/token', { schema: { params: Params, response: { 200: DeviceWithToken } } }, async (request, reply) => {

@@ -1,0 +1,235 @@
+{
+  "id": "917d254a-9b53-44df-8743-ab3137a734a0",
+  "prevId": "f7ff7a15-a8e7-4218-a49a-def5ec80763a",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.devices": {
+      "name": "devices",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "room": {
+          "name": "room",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "board": {
+          "name": "board",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sensor": {
+          "name": "sensor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reporting_interval_s": {
+          "name": "reporting_interval_s",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 30
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_rotated_at": {
+          "name": "token_rotated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_rssi_dbm": {
+          "name": "last_rssi_dbm",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "firmware_version": {
+          "name": "firmware_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "uptime_s": {
+          "name": "uptime_s",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "devices_name_length": {
+          "name": "devices_name_length",
+          "value": "char_length(\"devices\".\"name\") between 1 and 60"
+        },
+        "devices_room_length": {
+          "name": "devices_room_length",
+          "value": "char_length(\"devices\".\"room\") between 1 and 40"
+        },
+        "devices_board_supported": {
+          "name": "devices_board_supported",
+          "value": "\"devices\".\"board\" = 'ESP32'"
+        },
+        "devices_sensor_supported": {
+          "name": "devices_sensor_supported",
+          "value": "\"devices\".\"sensor\" = 'BME280'"
+        },
+        "devices_reporting_interval_range": {
+          "name": "devices_reporting_interval_range",
+          "value": "\"devices\".\"reporting_interval_s\" between 10 and 3600"
+        },
+        "devices_token_hash_sha256": {
+          "name": "devices_token_hash_sha256",
+          "value": "octet_length(\"devices\".\"token_hash\") = 32"
+        },
+        "devices_rssi_range": {
+          "name": "devices_rssi_range",
+          "value": "\"devices\".\"last_rssi_dbm\" between -120 and 0"
+        },
+        "devices_uptime_nonnegative": {
+          "name": "devices_uptime_nonnegative",
+          "value": "\"devices\".\"uptime_s\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.readings": {
+      "name": "readings",
+      "schema": "",
+      "columns": {
+        "device_id": {
+          "name": "device_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recorded_at": {
+          "name": "recorded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "received_at": {
+          "name": "received_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "temperature_c": {
+          "name": "temperature_c",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "humidity_pct": {
+          "name": "humidity_pct",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "readings_device_id_devices_id_fk": {
+          "name": "readings_device_id_devices_id_fk",
+          "tableFrom": "readings",
+          "tableTo": "devices",
+          "columnsFrom": [
+            "device_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "readings_pkey": {
+          "name": "readings_pkey",
+          "columns": [
+            "device_id",
+            "recorded_at"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "readings_temperature_range": {
+          "name": "readings_temperature_range",
+          "value": "\"readings\".\"temperature_c\" between -40 and 85"
+        },
+        "readings_humidity_range": {
+          "name": "readings_humidity_range",
+          "value": "\"readings\".\"humidity_pct\" between 0 and 100"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

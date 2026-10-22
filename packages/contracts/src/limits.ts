@@ -34,8 +34,17 @@ export const TELEMETRY_BATCH_MAX = 100;
 export const TELEMETRY_MAX_FUTURE_SKEW_MS = 2 * 60 * 1000;
 /** Readings older than this are rejected; enough for a device to flush an offline buffer. */
 export const TELEMETRY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+/**
+ * Telemetry requests allowed per device per window. A device reporting every 10 s (the fastest
+ * interval) sends 6 a minute; the headroom lets it flush a 24 h offline buffer (≤ 29 batches at
+ * the default 30 s) within a minute or two.
+ */
+export const TELEMETRY_RATE_LIMIT = { max: 30, windowMs: 60 * 1000 } as const;
 
 export const HISTORY_LIMIT = { default: 100, max: 500 } as const;
+/** History `from`/`to` default to the last 24 h; one request may span at most 31 days. */
+export const HISTORY_DEFAULT_RANGE_MS = 24 * 60 * 60 * 1000;
+export const HISTORY_MAX_RANGE_MS = 31 * 24 * 60 * 60 * 1000;
 export const HISTORY_BUCKETS = ['raw', '5m', '1h'] as const;
 export type HistoryBucket = (typeof HISTORY_BUCKETS)[number];
 

@@ -1,3 +1,4 @@
+import { TransactionRollbackError } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 
@@ -31,23 +32,34 @@ export function buildTestApp({ databaseUrl = UNREACHABLE_DATABASE_URL } = {}) {
 }
 
 type TxContext = { app: App; client: pg.PoolClient; database: Database; logs: string[] };
+type AppOptions = Pick<Parameters<typeof buildApp>[0], 'telemetryRateLimit'>;
 
 /**
  * Runs `fn` against a real app whose queries all go through one connection inside a
  * transaction that is always rolled back: tests see their own writes, and nothing persists.
+ * The app gets the transaction as its database, so its own `db.transaction()` calls become
+ * savepoints instead of committing the outer transaction.
  */
-export async function withRolledBackApp<T>(pool: pg.Pool, fn: (ctx: TxContext) => Promise<T>): Promise<T> {
+export async function withRolledBackApp<T>(pool: pg.Pool, fn: (ctx: TxContext) => Promise<T>, options: AppOptions = {}): Promise<T> {
   const client = await pool.connect();
   const { logs, logStream } = collectLogs();
-  await client.query('begin');
-  const database: Database = { pool, db: drizzle({ client, schema }) };
-  const app = buildApp({ config, database, logStream });
+  let result: T | undefined;
   try {
-    await app.ready();
-    return await fn({ app, client, database, logs });
+    await drizzle({ client, schema }).transaction(async (tx) => {
+      const database: Database = { pool, db: tx as unknown as Database['db'] };
+      const app = buildApp({ config, database, logStream, ...options });
+      try {
+        await app.ready();
+        result = await fn({ app, client, database, logs });
+      } finally {
+        await app.close();
+      }
+      tx.rollback();
+    });
+  } catch (error) {
+    if (!(error instanceof TransactionRollbackError)) throw error;
   } finally {
-    await app.close();
-    await client.query('rollback');
     client.release();
   }
+  return result as T;
 }

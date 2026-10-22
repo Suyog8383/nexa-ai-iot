@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, customType, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, customType, doublePrecision, integer, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
 
@@ -7,7 +7,7 @@ const timestamptz = (name: string) => timestamp(name, { withTimezone: true, mode
 
 /**
  * Registered ESP32 + BME280 devices. Columns follow docs/architecture.md; the token is stored
- * only as a SHA-256 hash (issued in a later PR).
+ * only as a SHA-256 hash.
  */
 export const devices = pgTable(
   'devices',
@@ -41,3 +41,29 @@ export const devices = pgTable(
 );
 
 export type DeviceRow = typeof devices.$inferSelect;
+
+/**
+ * One sensor reading per device per `recorded_at`. The primary key is the idempotency key for
+ * telemetry resends, and its B-tree index also serves newest-first history scans (Postgres reads
+ * it backwards for `order by recorded_at desc`), so no second index is needed.
+ */
+export const readings = pgTable(
+  'readings',
+  {
+    deviceId: uuid('device_id')
+      .notNull()
+      .references(() => devices.id, { onDelete: 'cascade' }),
+    recordedAt: timestamptz('recorded_at').notNull(),
+    receivedAt: timestamptz('received_at').notNull().defaultNow(),
+    temperatureC: doublePrecision('temperature_c').notNull(),
+    humidityPct: doublePrecision('humidity_pct').notNull(),
+  },
+  (t) => [
+    primaryKey({ name: 'readings_pkey', columns: [t.deviceId, t.recordedAt] }),
+    // BME280 operating range (TEMPERATURE_RANGE_C / HUMIDITY_RANGE_PCT). Also rejects NaN and ±Infinity.
+    check('readings_temperature_range', sql`${t.temperatureC} between -40 and 85`),
+    check('readings_humidity_range', sql`${t.humidityPct} between 0 and 100`),
+  ],
+);
+
+export type ReadingRow = typeof readings.$inferSelect;

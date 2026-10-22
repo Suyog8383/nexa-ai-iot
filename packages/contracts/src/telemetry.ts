@@ -21,8 +21,10 @@ export type ReadingInput = z.infer<typeof ReadingInput>;
 /** Self-reported by the device alongside its readings; all optional. */
 export const Diagnostics = z.strictObject({
   rssiDbm: z.number().int().min(-120).max(0).optional(),
-  firmwareVersion: z.string().min(1).max(32).optional(),
-  uptimeS: z.number().int().min(0).optional(),
+  /** Printable ASCII only, e.g. `0.1.0`. */
+  firmwareVersion: z.string().min(1).max(32).regex(/^[\x20-\x7E]+$/).optional(),
+  /** Seconds since boot; capped at the largest 32-bit signed integer (about 68 years). */
+  uptimeS: z.number().int().min(0).max(2_147_483_647).optional(),
 });
 export type Diagnostics = z.infer<typeof Diagnostics>;
 
@@ -33,8 +35,15 @@ export const TelemetryRequest = z.strictObject({
 });
 export type TelemetryRequest = z.infer<typeof TelemetryRequest>;
 
-/** 202: readings already stored for the same `recordedAt` are counted as duplicates, not errors. */
-export const TelemetryResponse = z.object({ accepted: z.number().int().min(0), duplicates: z.number().int().min(0) });
+/**
+ * 202. A reading whose `recordedAt` is already stored is never overwritten: it counts as a
+ * `duplicate` if its values match the stored ones, otherwise as a `conflict` (and is not stored).
+ */
+export const TelemetryResponse = z.object({
+  accepted: z.number().int().min(0),
+  duplicates: z.number().int().min(0),
+  conflicts: z.number().int().min(0),
+});
 export type TelemetryResponse = z.infer<typeof TelemetryResponse>;
 
 /** A stored reading. */
