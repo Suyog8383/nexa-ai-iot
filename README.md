@@ -7,7 +7,7 @@ AI-powered indoor environment monitoring: an ESP32 + BME280 sensor reports tempe
 | Path | What | Status |
 | --- | --- | --- |
 | [`apps/mobile`](apps/mobile) | React Native + Expo app (Expo Router, TypeScript) | Active — MVP UI on mock data |
-| [`apps/api`](apps/api) | Backend API (Fastify + TypeScript, PostgreSQL) | Skeleton: health check + `devices` table |
+| [`apps/api`](apps/api) | Backend API (Fastify + TypeScript, PostgreSQL) | Devices, device tokens, telemetry ingestion and reading history |
 | [`packages/contracts`](packages/contracts) | Shared API schemas (zod), types and limits | Active — API contract v1 |
 | [`firmware/esp32-bme280`](firmware/esp32-bme280) | ESP32 + BME280 sensor firmware | Planned |
 | [`infra`](infra) | Local Postgres (Docker Compose); deployment later | Local dev only |

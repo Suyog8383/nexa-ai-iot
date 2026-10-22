@@ -31,6 +31,7 @@
     "vitest": "^5.0.5"
   },
   "dependencies": {
+    "@fastify/rate-limit": "^11.2.1",
     "@nexa/contracts": "*",
     "drizzle-orm": "^0.45.4",
     "fastify": "^5.12.7",

@@ -39,6 +39,8 @@ Shared request/response types live in `packages/contracts` and are used by both 
 | API contract | zod schemas in `@nexa/contracts`, shared by the app and the API |
 | Device → API transport | HTTPS `POST /v1/telemetry` with a per-device bearer token; MQTT revisited if device count, frequency or server→device commands require it |
 | Reporting interval | 30 s default (10–3600 s allowed) |
+| Telemetry storage | One `readings` row per device per `recorded_at` (primary key = idempotency key); resends are duplicates, differing values at a stored time are conflicts and never overwrite |
+| Telemetry rate limit | `@fastify/rate-limit`, keyed on the authenticated device, 30 requests/min, in-process memory store (no Redis while there is one API instance) |
 | App → API auth (MVP) | One owner token from `.env`, for local/LAN development only. The API is not exposed to the internet until real user accounts exist |
 
 ## Monorepo

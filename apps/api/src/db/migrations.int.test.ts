@@ -30,9 +30,22 @@ describe('migrations', () => {
     expect(rows.find((r) => r.column_name === 'last_seen_at')).toMatchObject({ data_type: 'timestamp with time zone', is_nullable: 'YES' });
   });
 
-  it('only create the devices table in this PR', async () => {
-    const { rows } = await database.pool.query<{ table_name: string }>(`select table_name from information_schema.tables where table_schema = 'public'`);
-    expect(rows.map((r) => r.table_name)).toEqual(['devices']);
+  it('create only the devices and readings tables', async () => {
+    const { rows } = await database.pool.query<{ table_name: string }>(`select table_name from information_schema.tables where table_schema = 'public' order by table_name`);
+    expect(rows.map((r) => r.table_name)).toEqual(['devices', 'readings']);
+  });
+
+  it('create the readings table with the expected columns', async () => {
+    const { rows } = await database.pool.query<{ column_name: string; data_type: string; is_nullable: string }>(
+      `select column_name, data_type, is_nullable from information_schema.columns where table_schema = 'public' and table_name = 'readings' order by ordinal_position`,
+    );
+    expect(rows).toEqual([
+      { column_name: 'device_id', data_type: 'uuid', is_nullable: 'NO' },
+      { column_name: 'recorded_at', data_type: 'timestamp with time zone', is_nullable: 'NO' },
+      { column_name: 'received_at', data_type: 'timestamp with time zone', is_nullable: 'NO' },
+      { column_name: 'temperature_c', data_type: 'double precision', is_nullable: 'NO' },
+      { column_name: 'humidity_pct', data_type: 'double precision', is_nullable: 'NO' },
+    ]);
   });
 
   it('are idempotent', async () => {
@@ -57,6 +70,57 @@ describe('migrations', () => {
   ])('reject %s', async (_label, overrides, constraint) => {
     await inRolledBackTransaction(database.pool, async (client) => {
       await expect(insertDevice(client, overrides)).rejects.toMatchObject({ constraint });
+    });
+  });
+});
+
+describe('readings table', () => {
+  const reading = (deviceId: string, overrides: Record<string, unknown> = {}) => {
+    const row = { device_id: deviceId, recorded_at: new Date('2026-10-19T08:30:00Z'), temperature_c: 21.5, humidity_pct: 45, ...overrides };
+    const columns = Object.keys(row);
+    return { text: `insert into readings (${columns.join(', ')}) values (${columns.map((_, i) => `$${i + 1}`).join(', ')})`, values: Object.values(row) };
+  };
+
+  it('allows one reading per device per recorded_at', async () => {
+    await inRolledBackTransaction(database.pool, async (client) => {
+      const { rows } = (await insertDevice(client)) as { rows: { id: string }[] };
+      const id = rows[0]?.id ?? '';
+      const { text, values } = reading(id);
+      await client.query(text, values);
+      await expect(client.query(text, values)).rejects.toMatchObject({ constraint: 'readings_pkey' });
+    });
+  });
+
+  it.each([
+    ['a temperature above 85 °C', { temperature_c: 85.5 }, 'readings_temperature_range'],
+    ['a temperature below -40 °C', { temperature_c: -41 }, 'readings_temperature_range'],
+    ['a NaN temperature', { temperature_c: 'NaN' }, 'readings_temperature_range'],
+    ['an infinite humidity', { humidity_pct: 'Infinity' }, 'readings_humidity_range'],
+    ['humidity above 100 %', { humidity_pct: 101 }, 'readings_humidity_range'],
+  ])('reject %s', async (_label, overrides, constraint) => {
+    await inRolledBackTransaction(database.pool, async (client) => {
+      const { rows } = (await insertDevice(client)) as { rows: { id: string }[] };
+      const { text, values } = reading(rows[0]?.id ?? '', overrides);
+      await expect(client.query(text, values)).rejects.toMatchObject({ constraint });
+    });
+  });
+
+  it('reject readings for a device that does not exist', async () => {
+    await inRolledBackTransaction(database.pool, async (client) => {
+      const { text, values } = reading('00000000-0000-4000-8000-000000000000');
+      await expect(client.query(text, values)).rejects.toMatchObject({ constraint: 'readings_device_id_devices_id_fk' });
+    });
+  });
+
+  it('serve newest-first history and the latest reading from the primary key index', async () => {
+    await inRolledBackTransaction(database.pool, async (client) => {
+      // The table is tiny in tests, so steer the planner away from a sequential scan to see which index it can use.
+      await client.query('set local enable_seqscan = off');
+      const plan = async (text: string) => ((await client.query(`explain ${text}`)).rows as { 'QUERY PLAN': string }[]).map((r) => r['QUERY PLAN']).join('\n');
+      const id = "'00000000-0000-4000-8000-000000000000'";
+      const history = await plan(`select * from readings where device_id = ${id} and recorded_at >= now() - interval '1 day' and recorded_at < now() order by recorded_at desc limit 101`);
+      expect(history).toMatch(/Index Scan Backward using readings_pkey/);
+      expect(history).not.toMatch(/Sort/);
     });
   });
 });

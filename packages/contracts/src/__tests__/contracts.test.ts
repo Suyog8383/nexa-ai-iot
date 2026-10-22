@@ -10,6 +10,7 @@ import {
   RegisterDeviceRequest,
   TELEMETRY_BATCH_MAX,
   TelemetryRequest,
+  TelemetryResponse,
   UpdateAlertRuleRequest,
 } from '../index';
 
@@ -82,8 +83,17 @@ describe('telemetry ingestion', () => {
     expect(TelemetryRequest.safeParse({ readings: Array(TELEMETRY_BATCH_MAX + 1).fill(reading) }).success).toBe(false);
   });
 
-  it('rejects implausible diagnostics', () => {
-    expect(TelemetryRequest.safeParse({ readings: [reading], diagnostics: { rssiDbm: 10 } }).success).toBe(false);
+  it.each([
+    ['an impossible RSSI', { rssiDbm: 10 }],
+    ['a firmware version with control characters', { firmwareVersion: '0.1.0\n' }],
+    ['uptime beyond a 32-bit integer', { uptimeS: 2 ** 31 }],
+  ])('rejects %s in diagnostics', (_label, diagnostics) => {
+    expect(TelemetryRequest.safeParse({ readings: [reading], diagnostics }).success).toBe(false);
+  });
+
+  it('reports accepted, duplicate and conflicting readings', () => {
+    expect(TelemetryResponse.safeParse({ accepted: 2, duplicates: 1, conflicts: 0 }).success).toBe(true);
+    expect(TelemetryResponse.safeParse({ accepted: 2, duplicates: 1 }).success).toBe(false);
   });
 });
 
