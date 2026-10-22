@@ -1,0 +1,1 @@
+ALTER TABLE "alert_rules" ADD COLUMN "evaluate_from" timestamp with time zone DEFAULT now() NOT NULL;

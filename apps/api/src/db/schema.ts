@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, customType, doublePrecision, integer, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, customType, doublePrecision, foreignKey, index, integer, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
 
@@ -67,3 +67,93 @@ export const readings = pgTable(
 );
 
 export type ReadingRow = typeof readings.$inferSelect;
+
+/**
+ * Owner-defined thresholds on one device's readings. Bounds mirror `ALERT_THRESHOLD_BOUNDS` and
+ * `ALERT_DURATIONS_S` in `@nexa/contracts/limits`. Deleting a rule sets `deleted_at` so the events
+ * it produced keep their history; deleting the device removes both.
+ */
+export const alertRules = pgTable(
+  'alert_rules',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    deviceId: uuid('device_id')
+      .notNull()
+      .references(() => devices.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    metric: text('metric').notNull(),
+    condition: text('condition').notNull(),
+    threshold: doublePrecision('threshold').notNull(),
+    durationS: integer('duration_s').notNull(),
+    notifyPush: boolean('notify_push').notNull(),
+    notifyInApp: boolean('notify_in_app').notNull(),
+    notifySound: boolean('notify_sound').notNull(),
+    enabled: boolean('enabled').notNull().default(true),
+    origin: text('origin'),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+    deletedAt: timestamptz('deleted_at'),
+    /**
+     * Readings recorded before this aren't evaluated against the rule. Set when the rule is created,
+     * re-enabled, or changes what it evaluates, so late readings (an offline buffer) can't open
+     * events from before the rule, or overlapping the event a change resolved.
+     */
+    evaluateFrom: timestamptz('evaluate_from').notNull().defaultNow(),
+  },
+  (t) => [
+    // Lets alert_events reference (rule, device) together, so an event's device is always its rule's.
+    unique('alert_rules_id_device_unique').on(t.id, t.deviceId),
+    index('alert_rules_device_idx').on(t.deviceId),
+    check('alert_rules_name_length', sql`char_length(${t.name}) between 1 and 60`),
+    check('alert_rules_metric_supported', sql`${t.metric} in ('temperature', 'humidity')`),
+    check('alert_rules_condition_supported', sql`${t.condition} in ('below', 'above')`),
+    // Also rejects NaN and ±Infinity.
+    check(
+      'alert_rules_threshold_range',
+      sql`(${t.metric} = 'temperature' and ${t.threshold} between 5 and 40) or (${t.metric} = 'humidity' and ${t.threshold} between 10 and 90)`,
+    ),
+    check('alert_rules_duration_supported', sql`${t.durationS} in (0, 300, 900)`),
+    check('alert_rules_origin_length', sql`char_length(${t.origin}) between 1 and 64`),
+  ],
+);
+
+export type AlertRuleRow = typeof alertRules.$inferSelect;
+
+/**
+ * A period during which a rule's condition held. `metric`, `condition` and `threshold` are copied
+ * from the rule when the event opens, so later edits don't rewrite history. At most one open
+ * (unresolved) event per rule, and one event per rule per trigger time, so re-evaluating the same
+ * readings can never create a second event.
+ */
+export const alertEvents = pgTable(
+  'alert_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ruleId: uuid('rule_id').notNull(),
+    deviceId: uuid('device_id').notNull(),
+    metric: text('metric').notNull(),
+    condition: text('condition').notNull(),
+    threshold: doublePrecision('threshold').notNull(),
+    triggerValue: doublePrecision('trigger_value').notNull(),
+    triggeredAt: timestamptz('triggered_at').notNull(),
+    resolvedAt: timestamptz('resolved_at'),
+    acknowledgedAt: timestamptz('acknowledged_at'),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    foreignKey({ name: 'alert_events_rule_device_fk', columns: [t.ruleId, t.deviceId], foreignColumns: [alertRules.id, alertRules.deviceId] }).onDelete('cascade'),
+    unique('alert_events_rule_triggered_at_unique').on(t.ruleId, t.triggeredAt),
+    uniqueIndex('alert_events_one_open_per_rule').on(t.ruleId).where(sql`${t.resolvedAt} is null`),
+    // Newest-first listing, overall and per device.
+    index('alert_events_triggered_idx').on(t.triggeredAt.desc(), t.id.desc()),
+    index('alert_events_device_triggered_idx').on(t.deviceId, t.triggeredAt.desc(), t.id.desc()),
+    check('alert_events_metric_supported', sql`${t.metric} in ('temperature', 'humidity')`),
+    check('alert_events_condition_supported', sql`${t.condition} in ('below', 'above')`),
+    // A trigger value is a stored reading, so it is inside the BME280 range.
+    check('alert_events_trigger_value_range', sql`${t.triggerValue} between -40 and 100`),
+    check('alert_events_resolved_after_triggered', sql`${t.resolvedAt} >= ${t.triggeredAt}`),
+    check('alert_events_acknowledged_after_triggered', sql`${t.acknowledgedAt} >= ${t.triggeredAt}`),
+  ],
+);
+
+export type AlertEventRow = typeof alertEvents.$inferSelect;

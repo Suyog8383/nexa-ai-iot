@@ -41,6 +41,7 @@ Shared request/response types live in `packages/contracts` and are used by both 
 | Reporting interval | 30 s default (10–3600 s allowed) |
 | Telemetry storage | One `readings` row per device per `recorded_at` (primary key = idempotency key); resends are duplicates, differing values at a stored time are conflicts and never overwrite |
 | Telemetry rate limit | `@fastify/rate-limit`, keyed on the authenticated device, 30 requests/min, in-process memory store (no Redis while there is one API instance) |
+| Alert evaluation | Synchronous, inside the telemetry ingestion transaction, on newly stored readings only, and only those recorded since the rule was created, re-enabled or last changed what it evaluates (`evaluate_from`). Duration rules need the condition on every reading for the duration; a gap over 3 reporting intervals restarts it. One open event per rule, enforced by a partial unique index. Deleting a rule is a soft delete, so event history is kept. A failed evaluation rejects the whole report (fail closed) rather than storing readings it hasn't evaluated; decoupling it would need a per-device evaluation cursor and a background worker, revisited with notification delivery |
 | App → API auth (MVP) | One owner token from `.env`, for local/LAN development only. The API is not exposed to the internet until real user accounts exist |
 
 ## Monorepo

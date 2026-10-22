@@ -12,6 +12,7 @@ import {
 
 import type { Database } from '../../db/client';
 import type { DeviceRow, ReadingRow } from '../../db/schema';
+import { evaluateNewReadings } from '../alerts/service';
 
 import * as repo from './repo';
 
@@ -61,9 +62,10 @@ const sameValues = (a: repo.NewReading, b: repo.NewReading) => a.temperatureC ==
 
 /**
  * Stores a report from an authenticated device in one transaction: marks the device seen (even
- * if every reading is a duplicate), updates its diagnostics and inserts new readings. A reading
- * at an already-stored `recordedAt` is never overwritten. Returns null if the device's token was
- * rotated or revoked after authentication; nothing is written then.
+ * if every reading is a duplicate), updates its diagnostics, inserts new readings and evaluates
+ * the device's alert rules against them. A reading at an already-stored `recordedAt` is never
+ * overwritten (or re-evaluated). Returns null if the device's token was rotated or revoked after
+ * authentication; nothing is written then.
  */
 export async function ingestTelemetry(db: Db, device: DeviceRow, rows: repo.NewReading[], body: TelemetryRequest, receivedAt: Date): Promise<TelemetryResponse | null> {
   // Within the batch, the first reading for a timestamp wins, like an earlier request would.
@@ -80,7 +82,9 @@ export async function ingestTelemetry(db: Db, device: DeviceRow, rows: repo.NewR
   return db.transaction(async (tx) => {
     if (!(await repo.recordDeviceReport(tx, device.id, device.tokenHash, receivedAt, body.diagnostics ?? {}))) return null;
 
+    const previousLatest = await repo.latestRecordedAt(tx, device.id);
     const inserted = new Set((await repo.insertReadings(tx, device.id, receivedAt, [...unique.values()])).map((d) => d.getTime()));
+    await evaluateNewReadings(tx, device, [...unique.values()].filter((row) => inserted.has(row.recordedAt.getTime())), previousLatest);
     const skipped = [...unique.values()].filter((row) => !inserted.has(row.recordedAt.getTime()));
     if (skipped.length) {
       const stored = new Map((await repo.findReadingsAt(tx, device.id, skipped.map((row) => row.recordedAt))).map((row) => [row.recordedAt.getTime(), row]));
