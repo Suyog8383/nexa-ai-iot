@@ -30,6 +30,12 @@ export async function recordDeviceReport(db: Db, deviceId: string, tokenHash: Bu
   return rows.length === 1;
 }
 
+/** The device's newest `recordedAt`, or null if it has no readings. */
+export async function latestRecordedAt(db: Db, deviceId: string): Promise<Date | null> {
+  const [row] = await db.select({ recordedAt: readings.recordedAt }).from(readings).where(eq(readings.deviceId, deviceId)).orderBy(desc(readings.recordedAt)).limit(1);
+  return row?.recordedAt ?? null;
+}
+
 /** Inserts readings, skipping any whose (device, recordedAt) is already stored. Returns the times actually inserted. */
 export async function insertReadings(db: Db, deviceId: string, receivedAt: Date, rows: NewReading[]): Promise<Date[]> {
   const inserted = await db

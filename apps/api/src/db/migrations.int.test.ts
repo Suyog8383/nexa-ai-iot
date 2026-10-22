@@ -30,9 +30,9 @@ describe('migrations', () => {
     expect(rows.find((r) => r.column_name === 'last_seen_at')).toMatchObject({ data_type: 'timestamp with time zone', is_nullable: 'YES' });
   });
 
-  it('create only the devices and readings tables', async () => {
+  it('create only the devices, readings and alert tables', async () => {
     const { rows } = await database.pool.query<{ table_name: string }>(`select table_name from information_schema.tables where table_schema = 'public' order by table_name`);
-    expect(rows.map((r) => r.table_name)).toEqual(['devices', 'readings']);
+    expect(rows.map((r) => r.table_name)).toEqual(['alert_events', 'alert_rules', 'devices', 'readings']);
   });
 
   it('create the readings table with the expected columns', async () => {
@@ -121,6 +121,122 @@ describe('readings table', () => {
       const history = await plan(`select * from readings where device_id = ${id} and recorded_at >= now() - interval '1 day' and recorded_at < now() order by recorded_at desc limit 101`);
       expect(history).toMatch(/Index Scan Backward using readings_pkey/);
       expect(history).not.toMatch(/Sort/);
+    });
+  });
+});
+
+describe('alert tables', () => {
+  type Client = { query: (text: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }> };
+
+  async function insertRow(client: Client, table: string, row: Record<string, unknown>) {
+    const columns = Object.keys(row);
+    // Table and column names come from this test's own constants; values are always parameters.
+    const { rows } = await client.query(`insert into ${table} (${columns.join(', ')}) values (${columns.map((_, i) => `$${i + 1}`).join(', ')}) returning *`, Object.values(row));
+    return rows[0] as Record<string, unknown> & { id: string };
+  }
+
+  const rule = (deviceId: string, overrides: Record<string, unknown> = {}) => ({
+    device_id: deviceId,
+    name: 'High Temperature Alert',
+    metric: 'temperature',
+    condition: 'above',
+    threshold: 30,
+    duration_s: 0,
+    notify_push: true,
+    notify_in_app: true,
+    notify_sound: false,
+    ...overrides,
+  });
+
+  const event = (ruleId: string, deviceId: string, overrides: Record<string, unknown> = {}) => ({
+    rule_id: ruleId,
+    device_id: deviceId,
+    metric: 'temperature',
+    condition: 'above',
+    threshold: 30,
+    trigger_value: 31,
+    triggered_at: new Date('2026-10-19T08:30:00Z'),
+    ...overrides,
+  });
+
+  async function deviceAndRule(client: Client) {
+    const { rows } = (await insertDevice(client)) as { rows: { id: string }[] };
+    const deviceId = rows[0]?.id ?? '';
+    const created = await insertRow(client, 'alert_rules', rule(deviceId));
+    return { deviceId, ruleId: created.id };
+  }
+
+  it('apply defaults to a new rule', async () => {
+    await inRolledBackTransaction(database.pool, async (client) => {
+      const { rows } = (await insertDevice(client)) as { rows: { id: string }[] };
+      const created = await insertRow(client, 'alert_rules', rule(rows[0]?.id ?? ''));
+      expect(created).toMatchObject({ enabled: true, deleted_at: null, origin: null });
+      expect(created.evaluate_from).toBeInstanceOf(Date);
+    });
+  });
+
+  it.each([
+    ['an unknown metric', { metric: 'pressure' }, 'alert_rules_metric_supported'],
+    ['an unknown condition', { condition: 'equals' }, 'alert_rules_condition_supported'],
+    ['a temperature threshold above 40 °C', { threshold: 40.5 }, 'alert_rules_threshold_range'],
+    ['a humidity threshold below 10 %', { metric: 'humidity', threshold: 5 }, 'alert_rules_threshold_range'],
+    ['a NaN threshold', { threshold: 'NaN' }, 'alert_rules_threshold_range'],
+    ['an unsupported duration', { duration_s: 60 }, 'alert_rules_duration_supported'],
+    ['an empty name', { name: '' }, 'alert_rules_name_length'],
+    ['a rule for a device that does not exist', { device_id: '00000000-0000-4000-8000-000000000000' }, 'alert_rules_device_id_devices_id_fk'],
+  ])('reject a rule with %s', async (_label, overrides, constraint) => {
+    await inRolledBackTransaction(database.pool, async (client) => {
+      const { rows } = (await insertDevice(client)) as { rows: { id: string }[] };
+      await expect(insertRow(client, 'alert_rules', rule(rows[0]?.id ?? '', overrides))).rejects.toMatchObject({ constraint });
+    });
+  });
+
+  it('allow only one open event per rule', async () => {
+    await inRolledBackTransaction(database.pool, async (client) => {
+      const { deviceId, ruleId } = await deviceAndRule(client);
+      await insertRow(client, 'alert_events', event(ruleId, deviceId));
+      await expect(insertRow(client, 'alert_events', event(ruleId, deviceId, { triggered_at: new Date('2026-10-19T09:00:00Z') }))).rejects.toMatchObject({
+        constraint: 'alert_events_one_open_per_rule',
+      });
+    });
+  });
+
+  it('allow one event per rule per trigger time, even once resolved', async () => {
+    await inRolledBackTransaction(database.pool, async (client) => {
+      const { deviceId, ruleId } = await deviceAndRule(client);
+      await insertRow(client, 'alert_events', event(ruleId, deviceId, { resolved_at: new Date('2026-10-19T08:31:00Z') }));
+      await expect(insertRow(client, 'alert_events', event(ruleId, deviceId, { resolved_at: new Date('2026-10-19T08:32:00Z') }))).rejects.toMatchObject({
+        constraint: 'alert_events_rule_triggered_at_unique',
+      });
+    });
+  });
+
+  it('reject an event whose device is not its rule’s device', async () => {
+    await inRolledBackTransaction(database.pool, async (client) => {
+      const { ruleId } = await deviceAndRule(client);
+      const { rows } = (await insertDevice(client, { name: 'Other' })) as { rows: { id: string }[] };
+      await expect(insertRow(client, 'alert_events', event(ruleId, rows[0]?.id ?? ''))).rejects.toMatchObject({ constraint: 'alert_events_rule_device_fk' });
+    });
+  });
+
+  it.each([
+    ['resolved before it triggered', { resolved_at: new Date('2026-10-19T08:00:00Z') }, 'alert_events_resolved_after_triggered'],
+    ['acknowledged before it triggered', { acknowledged_at: new Date('2026-10-19T08:00:00Z') }, 'alert_events_acknowledged_after_triggered'],
+    ['an infinite trigger value', { trigger_value: 'Infinity' }, 'alert_events_trigger_value_range'],
+  ])('reject an event %s', async (_label, overrides, constraint) => {
+    await inRolledBackTransaction(database.pool, async (client) => {
+      const { deviceId, ruleId } = await deviceAndRule(client);
+      await expect(insertRow(client, 'alert_events', event(ruleId, deviceId, overrides))).rejects.toMatchObject({ constraint });
+    });
+  });
+
+  it('delete a device’s rules and events with the device', async () => {
+    await inRolledBackTransaction(database.pool, async (client) => {
+      const { deviceId, ruleId } = await deviceAndRule(client);
+      await insertRow(client, 'alert_events', event(ruleId, deviceId));
+      await client.query('delete from devices where id = $1', [deviceId]);
+      const { rows } = await client.query('select (select count(*)::int from alert_rules) as rules, (select count(*)::int from alert_events) as events');
+      expect(rows[0]).toEqual({ rules: 0, events: 0 });
     });
   });
 });

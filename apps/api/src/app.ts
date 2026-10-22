@@ -5,6 +5,7 @@ import { serializerCompiler, validatorCompiler, type ZodTypeProvider } from 'fas
 
 import type { Config } from './config';
 import type { Database } from './db/client';
+import { alertRoutes } from './modules/alerts/routes';
 import { deviceRoutes } from './modules/devices/routes';
 import { healthRoutes } from './modules/health/routes';
 import { telemetryRoutes, type TelemetryRateLimit } from './modules/telemetry/routes';
@@ -60,6 +61,7 @@ export function buildApp({ config, database, logStream, telemetryRateLimit = { m
   app.register(healthRoutes);
   app.register(deviceRoutes, { ownerToken: config.ownerToken });
   app.register(telemetryRoutes, { ownerToken: config.ownerToken, rateLimit: telemetryRateLimit });
+  app.register(alertRoutes, { ownerToken: config.ownerToken });
 
   return app;
 }

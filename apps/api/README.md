@@ -2,7 +2,7 @@
 
 Fastify 5 + TypeScript + PostgreSQL 16, as a modular monolith. Request and response schemas come from `@nexa/contracts`. Design decisions are in [docs/architecture.md](../../docs/architecture.md).
 
-**Status:** health check, device registration and tokens, telemetry ingestion, latest readings and history. Alerts come in a later PR.
+**Status:** health check, device registration and tokens, telemetry ingestion, latest readings and history, alert rules and alert events. Notification delivery comes in a later PR.
 
 ## Endpoints
 
@@ -15,6 +15,13 @@ Fastify 5 + TypeScript + PostgreSQL 16, as a modular monolith. Request and respo
 | `POST /v1/devices/:id/token` | owner | Replace the device token (the old one stops working immediately). **Returns the new token once.** |
 | `POST /v1/telemetry` | device | Send a batch of readings (and optional diagnostics) |
 | `GET /v1/devices/:id/readings` | owner | Reading history: raw, 5-minute or hourly |
+| `POST /v1/alert-rules` | owner | Create an alert rule for a device |
+| `GET /v1/alert-rules` | owner | List rules (oldest first), optionally `?deviceId=` |
+| `GET /v1/alert-rules/:id` | owner | One rule |
+| `PATCH /v1/alert-rules/:id` | owner | Change any of `name`, `metric`, `condition`, `threshold`, `durationS`, `notify`, `enabled` |
+| `DELETE /v1/alert-rules/:id` | owner | Delete a rule (`204`); its events are kept |
+| `GET /v1/alert-events` | owner | Alert event history, newest first |
+| `POST /v1/alert-events/:id/acknowledge` | owner | Acknowledge an event |
 
 **Owner auth:** `Authorization: Bearer <OWNER_TOKEN>`. **Device auth:** `Authorization: Bearer <device token>`. Neither works in place of the other. Both are checked before the request body is read, and a missing or wrong token gets `401` with `WWW-Authenticate: Bearer`.
 
@@ -97,6 +104,56 @@ curl -s http://127.0.0.1:4000/v1/devices/$ID -H "Authorization: Bearer $OWNER"
 curl -s "http://127.0.0.1:4000/v1/devices/$ID/readings" -H "Authorization: Bearer $OWNER"
 curl -s "http://127.0.0.1:4000/v1/devices/$ID/readings?bucket=5m&from=2026-10-21T00:00:00.000Z&to=2026-10-21T12:00:00.000Z" \
   -H "Authorization: Bearer $OWNER"
+```
+
+## Alerts
+
+Schemas are in `@nexa/contracts` (`alerts.ts`).
+
+**Rules.** One device, one metric, one condition:
+
+```json
+{ "deviceId": "…", "name": "High Temperature Alert", "metric": "temperature", "condition": "above",
+  "threshold": 30, "durationS": 300, "notify": { "push": true, "inApp": true, "sound": false } }
+```
+
+- `metric`: `temperature` (°C) or `humidity` (% RH). `condition`: `above` (value > threshold) or `below` (value < threshold); a reading equal to the threshold doesn't count.
+- `threshold`: 5–40 °C or 10–90 % RH (`ALERT_THRESHOLD_BOUNDS`). `durationS`: `0` (immediately), `300` or `900`.
+- `enabled` defaults to `true`. `origin` (optional) records the assistant message a rule came from and can't be changed.
+- An unknown `deviceId` gets `422` on `deviceId`. `PATCH` re-checks the merged rule, so changing only `metric` can fail on `threshold`. A rule can't move to another device.
+- `notify` is stored for the app; nothing is delivered yet.
+- `DELETE` hides the rule from every rule endpoint and from evaluation, but keeps it in the database so its events keep their history. Deleting a device deletes its rules and events.
+
+**Evaluation** runs inside the telemetry request, in the same transaction that stores the readings (no background worker):
+
+- Only newly stored readings newer than the device's previous newest reading are evaluated, oldest first. Resent readings (duplicates) aren't evaluated again, and a late reading older than what's stored can't open or resolve events after the fact.
+- A rule only looks at readings recorded since it was created, re-enabled, or last changed its `metric`, `condition`, `threshold` or `durationS`. A device flushing its offline buffer can't raise events from before the rule existed, or overlapping an event an edit resolved, and a duration never counts readings from before then.
+- An event opens when the condition has held on every reading for `durationS` (immediately for `0`). Its `triggeredAt` and `triggerValue` are the reading that completed the duration. Earlier stored readings count (within the window above), so a 5-minute rule can fire across several reports.
+- A gap between readings longer than 3 reporting intervals (90 s at the default 30 s) restarts the duration, but doesn't resolve an open event.
+- The open event resolves at the first reading that no longer meets the condition (`resolvedAt` = that reading's time).
+- Disabling or deleting a rule, or changing its `metric`, `condition`, `threshold` or `durationS`, resolves its open event at the time of the change; only readings recorded after the change are evaluated with the new settings. Renaming it or changing `notify` doesn't.
+- Each event keeps the `metric`, `condition` and `threshold` it opened with.
+- The database allows at most one open event per rule and one event per rule per `triggeredAt`, so retries can't create duplicates.
+- **Device clock running ahead:** a reading may be timestamped up to 2 minutes in the future. Until readings pass that time again, they are stored but not evaluated, so an alert can be up to 2 minutes late, and a spike shorter than the skew can be missed. Stored readings still count towards later duration checks.
+- **If evaluation fails**, the whole report is rejected with `500`: no readings, no last-seen update, no events. Nothing is half-stored, and the device's retry of the same batch is evaluated normally. The cost is that a persistent evaluation bug stops ingestion for affected devices until it's fixed (see `docs/architecture.md`).
+- Reports from one device are processed one at a time (each locks the device row), and evaluation locks the device's rules, so a rule change or disable made at the same moment as a report is applied either wholly before or wholly after it.
+
+**Events:** `GET /v1/alert-events?deviceId=&status=&limit=&cursor=`
+
+| Parameter | Default | Notes |
+| --- | --- | --- |
+| `deviceId` | — | Only this device's events |
+| `status` | `all` | `open` (not resolved), `resolved` or `all` |
+| `limit` | 100 | 1–500 items per page |
+| `cursor` | — | `nextCursor` from the previous page; keep the other parameters the same |
+
+Newest `triggeredAt` first (ties broken by id). `POST /v1/alert-events/:id/acknowledge` sets `acknowledgedAt` the first time and returns the event; calling it again changes nothing. Acknowledging doesn't resolve an event.
+
+```bash
+OWNER=$(sed -n 's/^OWNER_TOKEN=//p' apps/api/.env)
+curl -s -X POST http://127.0.0.1:4000/v1/alert-rules -H "Authorization: Bearer $OWNER" -H 'content-type: application/json' \
+  -d "{\"deviceId\":\"$ID\",\"name\":\"Hot\",\"metric\":\"temperature\",\"condition\":\"above\",\"threshold\":30,\"durationS\":0,\"notify\":{\"push\":true,\"inApp\":true,\"sound\":false}}"
+curl -s "http://127.0.0.1:4000/v1/alert-events?status=open" -H "Authorization: Bearer $OWNER"
 ```
 
 ## Setup (once)

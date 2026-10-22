@@ -15,6 +15,20 @@
       "when": 1792573736087,
       "tag": "0001_create_readings",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792658284274,
+      "tag": "0002_create_alerts",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792659287719,
+      "tag": "0003_alert_rules_evaluate_from",
+      "breakpoints": true
     }
   ]
 }
