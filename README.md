@@ -11,7 +11,7 @@ AI-powered indoor environment monitoring: an ESP32 + BME280 sensor reports tempe
 | [`packages/contracts`](packages/contracts) | Shared API schemas (zod), types and limits | Active — API contract v1 |
 | [`firmware/esp32-bme280`](firmware/esp32-bme280) | ESP32 + BME280 sensor firmware | Planned |
 | [`infra`](infra) | Local Postgres (Docker Compose); deployment later | Local dev only |
-| [`docs`](docs) | Architecture and decisions | [architecture.md](docs/architecture.md) |
+| [`docs`](docs) | Architecture, decisions and deferred work | [architecture.md](docs/architecture.md), [deferred-work.md](docs/deferred-work.md) |
 
 ## Setup
 

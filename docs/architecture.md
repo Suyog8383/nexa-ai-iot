@@ -50,6 +50,8 @@ npm workspaces (`apps/mobile`, `apps/api`, `packages/contracts`), installed once
 
 ## Open questions
 
+Deferred backend work with its scope is tracked in [deferred-work.md](deferred-work.md).
+
 - Hosting, and real user accounts (required before any deployment).
 - Device provisioning/pairing beyond flashing the token manually.
 - Telemetry retention; partitioning or a time-series extension if volume grows.
